@@ -1,0 +1,240 @@
+* {
+  all: unset;
+}
+
+/* --- Global Window Styling (The Bar) --- */
+#bar {
+    background-color: var(--theme_bg_color);
+    color: var(--theme_fg_color);
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+    border-top: solid 1px var(--borders);
+    padding: 0px;
+}
+
+/* --- General Container Styling --- */
+#start-container, #center-container, #end-container {
+    padding: 0;
+}
+
+#end-container {
+    padding-right: 8px;
+}
+
+
+/* --- General Button Styling --- */
+button {
+    border: none;
+    border-radius: 0;
+    padding: 6px 12px;
+    color: var(--theme_fg_color);
+    transition: background-color 0.1s ease-in-out;
+}
+
+button:hover {
+    background-color: alpha(var(--theme_fg_color), 0.1);
+}
+
+/* --- Taskbar Icon Button Styling --- */
+#task-button {
+    background-color: transparent;
+    border-radius: 4px; /* Rounded border behind icon */
+    margin: 3px 0px;
+    padding: 0px;
+    padding-right: 4px;
+    transition: all 0.2s ease-in-out;
+    border: solid 1px transparent;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+}
+
+#task-button-inner {
+    border-radius: 4px;
+    padding: 6px;
+    padding-right: 2px;
+    border: solid 1px transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+/* The "dot" for open but not active apps. Implemented as a short line. */
+#task-button.open {
+    background-image: linear-gradient(var(--theme_fg_color), var(--theme_fg_color));
+    background-size: 8px 3px;
+}
+
+#task-button:hover #task-button-inner.multiple {
+    border: solid 1px var(--borders);
+}
+
+#task-button:hover {
+    background-color: alpha(var(--theme_fg_color), 0.1);
+    border: solid 1px var(--borders);
+}
+
+/* The rounded bar that appears on hover */
+#task-button.open:hover {
+    background-image: linear-gradient(var(--theme_fg_color), var(--theme_fg_color));
+    background-size: 16px 3px;
+}
+
+/* The bar for the currently active window */
+#task-button.active {
+    background-image: linear-gradient(var(--theme_selected_bg_color), var(--theme_selected_bg_color));
+    background-size: 20px 3px;
+    background-color: alpha(var(--theme_fg_color), 0.15);
+    border: solid 1px alpha(var(--borders), 0.7);
+}
+
+#task-button.active:hover {
+    background-color: alpha(var(--theme_fg_color), 0.2);
+    background-image: linear-gradient(var(--theme_selected_bg_color), var(--theme_selected_bg_color));
+    background-size: 16px 3px;
+}
+
+#task-button.multiple:hover #task-button-inner {
+    border: solid 1px var(--borders);
+}
+
+#task-button.multiple.active #task-button-inner {
+    border: solid 1px var(--borders);
+}
+
+/* --- DateTime Widget Styling --- */
+#date-time-label {
+    padding: 0 12px;
+    font-weight: 400;
+}
+
+/* --- Right-Click Menu Styling --- */
+#popup-menu-box{
+    background-color: var(--theme_bg_color);
+    border: solid 1px var(--borders);
+    border-bottom: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 4px;
+    color: var(--theme_fg_color);
+}
+
+#popup-menu-box button {
+    padding: 8px 16px;
+    border-radius: 3px;
+}
+
+#popup-menu-box button:hover {
+    background-color: var(--theme_selected_bg_color);
+    color: var(--theme_selected_fg_color);
+}
+
+#minimize-button {
+    margin: 0px;
+    padding: 0px;
+    min-width: 5px;
+    border-left: 1px solid alpha(var(--borders), 0.8);
+}
+#end-container {
+    padding: 0;
+    border: none;
+}
+
+.destructive-action {
+    background-color: var(--error_color);
+}
+
+#popup-menu-box button.destructive-action:hover {
+    background-color: var(--error_color);
+}
+
+.warn-bg {
+    background-color: var(--warning_color);
+}
+
+.dim-bg {
+    background-color: alpha(var(--theme_fg_color), 0.1);
+}
+
+.active-bg {
+    background-color: alpha(var(--theme_fg_color), 0.2);
+}
+
+
+#start-menu {
+    background-color: var(--theme_bg_color);
+    border: solid 1px var(--borders);
+    border-bottom: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 10px;
+    color: var(--theme_fg_color);
+}
+
+
+/* Style for the container of the fake entry */
+.fake-entry {
+    background-color: var(--theme_bg_color);
+    border: 1px solid var(--borders);
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin: 4px;
+}
+
+/* Style for the placeholder text */
+.fake-entry .placeholder {
+    color: var(--insensitive_fg_color);
+    font-style: italic;
+}
+
+/* FIX 1: Precise cursor styling */
+.fake-entry .cursor {
+    /* Remove any horizontal padding/margin the character might have */
+    padding: 4px;
+    margin: 0;
+    /* Optional: Make it the same color as the text */
+    color: var(--theme_fg_color);
+}
+
+#search-result-button {
+    transition: none;
+}
+
+#search-result-button.selected {
+    background-color: alpha(var(--theme_selected_bg_color), 0.8);
+    border-radius: 6px;
+    border: 1px solid alpha(white, 0.7);
+}
+
+.dim-label {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+#search-separator {
+    min-height: 1px;
+    margin: 0px;
+    background-color: var(--theme_fg_color);
+}
+
+/* The separator itself */
+#letter-separator {
+    min-height: 1px;
+    background-color: var(--borders); /* A dark grey, adjust as needed */
+    margin: 10px 5px; /* Adds vertical and horizontal spacing */
+}
+
+/* The letter header that follows the separator */
+#letter-header {
+    font-size: 1em;
+    margin-left: 12px;
+    /* Removed top margin since the separator now handles spacing */
+}
+
+#connecting-label {
+    padding: 3px;
+    padding-bottom: 6px;
+}
+
+#heading {
+    margin: 4px;
+    margin-left: 12px;
+}
+

@@ -1,0 +1,5 @@
+venv
+bin
+gen
+**/__pycache__
+pinned_apps.json
