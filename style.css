@@ -170,7 +170,7 @@ button:hover {
 
 
 /* Style for the container of the fake entry */
-.fake-entry {
+#fake-entry {
     background-color: var(--theme_bg_color);
     border: 1px solid var(--borders);
     border-radius: 4px;
@@ -179,15 +179,18 @@ button:hover {
 }
 
 /* Style for the placeholder text */
-.fake-entry .placeholder {
+#fake-entry .placeholder {
     color: var(--insensitive_fg_color);
-    font-style: italic;
+}
+
+#fake-entry .regular {
+    padding-left: 1ex;
 }
 
 /* FIX 1: Precise cursor styling */
-.fake-entry .cursor {
+#fake-entry .cursor {
     /* Remove any horizontal padding/margin the character might have */
-    padding: 4px;
+    padding: 0;
     margin: 0;
     /* Optional: Make it the same color as the text */
     color: var(--theme_fg_color);
@@ -236,5 +239,9 @@ button:hover {
 #heading {
     margin: 4px;
     margin-left: 12px;
+}
+
+#wifi-entry {
+    padding: 0px 0px 8px 16px;
 }
 

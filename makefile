@@ -2,6 +2,7 @@
 # Makefile for GTK Taskbar Project (Production Version)
 # - Installs Python dependencies into a virtual environment.
 # - Self-diagnoses and compiles C code with all required libraries.
+# - Checks for user permissions before running.
 # - Runs the full application stack with automatic cleanup.
 # ==============================================================================
 
@@ -35,34 +36,62 @@ LDFLAGS = `pkg-config --libs gtk+-3.0 wayland-client libudev libinput`
 TOPLEVEL_MONITOR_SRC = $(SRC_DIR)/toplevel_monitor.c
 WAIT_FOR_CLICK_SRC = $(SRC_DIR)/wait_for_click.c
 TOPLEVEL_MONITOR_BIN = $(BIN_DIR)/toplevel_monitor
-WAIT_FOR_CLICK_BIN = $(BIN_DIR)/wait-for-click
+WAIT_FOR_CLICK_BIN = $(BIN_DIR)/wait_for_click
 
 # --- Named Pipe for communication ---
 FIFO_PATH = /tmp/taskbar-commands.fifo
 
 
 # --- Main Targets ---
-.PHONY: all build run clean venv
+.PHONY: all build run clean venv check-permissions full-clean
 
 all: build
 
 # 'make venv': Creates virtual env and installs dependencies.
 venv: $(VENV_DIR)/.installed
 
-# This is a "stamp" file. The rule runs only if the stamp file doesn't exist.
 $(VENV_DIR)/.installed:
 	@echo "--- Setting up Python virtual environment ---"
 	python3 -m venv $(VENV_DIR)
 	@echo "Installing Python dependencies (PyGObject, fabric-widgets)..."
 	$(VENV_PIP) install --upgrade pip
 	$(VENV_PIP) install pygobject
-	# Use the specific Git URL for fabric-widgets if it's not on PyPI
 	$(VENV_PIP) install git+https://github.com/Fabric-Development/fabric.git
-	@touch $@ # Create the stamp file to mark installation as complete.
+	@touch $@
 
 build: $(TOPLEVEL_MONITOR_BIN) $(WAIT_FOR_CLICK_BIN)
 
-run: venv build
+# NEW: 'make check-permissions': Verifies user has access to input devices.
+check-permissions:
+	@echo "--- Checking user permissions for input devices ---"
+	@bash -c '\
+		set -e; \
+		REQUIRED_GROUP="input"; \
+		if ! groups | grep -q -w "$$REQUIRED_GROUP"; then \
+			echo "   Error: User $$USER is not in the '\''$$REQUIRED_GROUP'\'' group."; \
+			echo "   This is required to read keyboard/mouse events without sudo."; \
+			echo "   To fix this, run: sudo usermod -aG $$REQUIRED_GROUP $$USER"; \
+			echo "   Then, you MUST log out and log back in for the change to take effect."; \
+			exit 1; \
+		fi; \
+		has_perms=0; \
+		for device in /dev/input/event*; do \
+			if [ -r "$$device" ]; then \
+				has_perms=1; \
+				break; \
+			fi; \
+		done; \
+		if [ "$$has_perms" -eq 0 ]; then \
+			echo "   Error: Cannot read from input devices in /dev/input/."; \
+			echo "   Even though you are in the '\''$$REQUIRED_GROUP'\'' group, permissions seem incorrect."; \
+			echo "   This might indicate a problem with system udev rules."; \
+			exit 1; \
+		fi; \
+		echo "Permissions look good."; \
+	'
+
+# MODIFIED: 'run' now depends on 'check-permissions'.
+run: venv build check-permissions
 	@echo "--- Starting Application Stack ---"
 	@bash -c '\
 		set -e; \
@@ -73,32 +102,28 @@ run: venv build
 			echo "\n--- Cleaning up resources ---"; \
 			if kill -0 "$$wait_pid" 2>/dev/null; then \
 				echo "Killing background listener $$wait_pid..."; \
-				sudo kill $$wait_pid; \
+				kill $$wait_pid; \
 			fi; \
-			sudo rm -f $(FIFO_PATH); \
+			rm -f $(FIFO_PATH); \
 			echo "Cleanup complete."; \
 		}; \
 		trap cleanup INT TERM EXIT; \
 		echo "Creating and configuring FIFO..."; \
-		sudo mkfifo $(FIFO_PATH) || true; \
-		sudo chown $(USER):$(USER) $(FIFO_PATH); \
+		mkfifo $(FIFO_PATH) || true; \
 		echo "Starting background click listener..."; \
-		sudo $(WAIT_FOR_CLICK_BIN) > $(FIFO_PATH) & \
+		$(WAIT_FOR_CLICK_BIN) > $(FIFO_PATH) & \
 		wait_pid=$$!; \
 		echo "Launching main Python application..."; \
 		$(VENV_PYTHON) main.py; \
 		wait $$wait_pid || true; \
 	'
 
-
 clean:
 	@echo "Cleaning up generated and compiled files..."
 	@rm -rf $(BIN_DIR) $(GEN_DIR)
-	@sudo rm -f $(FIFO_PATH)
+	@rm -f $(FIFO_PATH)
 	@echo "Cleanup complete."
 
-# 'make full-clean': A more aggressive clean that also removes the venv.
-.PHONY: full-clean
 full-clean: clean
 	@echo "Removing venv..."
 	@rm -rf $(VENV_DIR)

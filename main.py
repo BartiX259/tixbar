@@ -26,6 +26,7 @@ from fabric.widgets.scrolledwindow import ScrolledWindow
 from fabric.utils import get_relative_path
 
 from network import NetworkService, NetworkWidget
+from widgets import FakeEntry
 
 toplevel_monitor_process = None
 PINNED_APPS_FILE = "pinned_apps.json"
@@ -146,70 +147,6 @@ class AppService(GObject.GObject):
 
         self.emit('data-changed')
 
-# ===================================================================
-# === FAKE ENTRY (UTILITY WIDGET) ===================================
-# ===================================================================
-
-class FakeEntry(Gtk.Overlay):
-    def __init__(self, placeholder="", on_text_changed=None):
-        super().__init__(name="fake-entry")
-        self.text_buffer = ""
-        self.placeholder = placeholder
-        self.on_text_changed = on_text_changed
-
-        self._internal_box = Box(orientation="h")
-        self.add(self._internal_box)
-        self.label = Label(label=self.placeholder)
-        self.label.get_style_context().add_class("placeholder")
-        self.cursor = Label(label="|")
-        self.cursor.get_style_context().add_class("cursor")
-        self._internal_box.pack_start(self.cursor, False, False, 0)
-        self._internal_box.pack_start(self.label, False, False, 0)
-        self._setup_blinker()
-        self.show_all()
-
-    def _setup_blinker(self):
-        def _toggle_cursor():
-            if not self.get_window(): return GLib.SOURCE_REMOVE
-            self.cursor.set_opacity(0.0 if self.cursor.get_opacity() == 1.0 else 1.0)
-            return GLib.SOURCE_CONTINUE
-        GLib.timeout_add(500, _toggle_cursor)
-
-    def _update_label(self):
-        if self.text_buffer == "":
-            self.label.set_label(self.placeholder)
-            self.label.get_style_context().add_class("placeholder")
-            self._internal_box.reorder_child(self.cursor, 0)
-        else:
-            self.label.set_text(GLib.markup_escape_text(self.text_buffer))
-            self.label.get_style_context().remove_class("placeholder")
-            self._internal_box.reorder_child(self.cursor, 1)
-
-        if self.on_text_changed:
-            self.on_text_changed(self.text_buffer)
-
-    def handle_key_press(self, event_key):
-        key_name = Gdk.keyval_name(event_key.keyval)
-        text_changed = False
-
-        if key_name == "BackSpace":
-            if self.text_buffer:
-                self.text_buffer = self.text_buffer[:-1]
-                text_changed = True
-        elif key_name == "Escape":
-            toplevel = self.get_ancestor(Gtk.Window)
-            if toplevel: toplevel.destroy()
-            return
-
-        char_code = Gdk.keyval_to_unicode(event_key.keyval)
-        if char_code != 0 and chr(char_code).isprintable():
-            self.text_buffer += chr(char_code)
-            text_changed = True
-
-        if text_changed:
-            self._update_label()
-        self.cursor.set_opacity(1.0)
-
 
 # ===================================================================
 # === POPUPS ========================================================
@@ -295,9 +232,9 @@ class RightClickMenuPopup(Box):
             new_window_button = Button(label="New Window", on_clicked=self.on_new_window)
             self.add(new_window_button)
 
-        pin_label = "Unpin from taskbar" if self.app_id in self.app_service.pinned_app_ids else "Pin to taskbar"
-        toggle_pin_button = Button(label=pin_label, on_clicked=self.on_toggle_pin)
-        self.add(toggle_pin_button)
+            pin_label = "Unpin from taskbar" if self.app_id in self.app_service.pinned_app_ids else "Pin to taskbar"
+            toggle_pin_button = Button(label=pin_label, on_clicked=self.on_toggle_pin)
+            self.add(toggle_pin_button)
 
         if self.app_windows:
             close_all_button = Button(label="Close all", on_clicked=self.on_close_all)
@@ -574,23 +511,32 @@ class TaskListWidget(Box):
         open_unpinned_apps = sorted([app_id for app_id in grouped_windows.keys() if app_id not in self.app_service.pinned_app_ids])
         all_app_ids = self.app_service.pinned_app_ids + open_unpinned_apps
 
-        for app_id in all_app_ids:
-            if app_id not in self.app_service.db:
-                print(f"SKIP {app_id}")
-                continue
+        DEFAULT_ICON_NAME = "dialog-question"
 
-            app_info = self.app_service.db[app_id]
+        for app_id in all_app_ids:
+            # Use a default app_info if missing instead of skipping
+            if app_id not in self.app_service.db:
+                print(f"Missing app {app_id}, using default info")
+                app_info = {"icon": DEFAULT_ICON_NAME, "name": f"App {app_id}"}
+            else:
+                app_info = self.app_service.db[app_id]
+
             app_windows = grouped_windows.get(app_id, [])
             is_open = len(app_windows) > 0
             has_multiple_windows = len(app_windows) > 1
 
-            icon = Image(icon_name=app_info.get("icon", "dialog-question"), icon_size=24)
+            # Always use app_info["icon"], falling back to default if empty
+            icon_name = app_info.get("icon") or DEFAULT_ICON_NAME
+            icon = Image(icon_name=icon_name, icon_size=24)
+
             inner = Box(name="task-button-inner", children=[icon])
             icon_button = Button(name="task-button", child=inner)
             style_context = icon_button.get_style_context()
 
-            if is_open: style_context.add_class("open")
-            if has_multiple_windows: style_context.add_class("multiple")
+            if is_open:
+                style_context.add_class("open")
+            if has_multiple_windows:
+                style_context.add_class("multiple")
 
             if self.app_service.real_active_window_id:
                 if any(w.get("id", -1) == self.app_service.real_active_window_id for w in app_windows):
@@ -600,11 +546,22 @@ class TaskListWidget(Box):
 
             bar = self.get_ancestor(Bar)
             if has_multiple_windows:
-                self.popup_manager.attach(icon_button, lambda b=bar, wins=app_windows: self._create_left_click_menu_popup(b, wins), 'left-click')
+                self.popup_manager.attach(
+                    icon_button,
+                    lambda b=bar, wins=app_windows: self._create_left_click_menu_popup(b, wins),
+                    'left-click'
+                )
             else:
                 icon_button.connect("clicked", self._on_task_button_clicked, app_id)
 
-            self.popup_manager.attach(icon_button, lambda app_id=app_id, info=app_info, win_list=app_windows: self._create_right_click_menu_popup(app_id, info, win_list), 'right-click')
+            # Use simple right-click menu instead of full one
+            self.popup_manager.attach(
+                icon_button,
+                lambda app_id=app_id, info=app_info, win_list=app_windows:
+                    self._create_right_click_menu_popup(app_id, info, win_list),
+                'right-click'
+            )
+
             self.add(icon_button)
 
         self.show_all()
